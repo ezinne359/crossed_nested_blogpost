@@ -334,7 +334,7 @@ BIC(nested_mod)
 ```
 
 
-#### References: 
+### References: 
 [1] https://github.com/5harad/openpolicing
 
 [2] https://5harad.com/papers/100M-stops.pdf
