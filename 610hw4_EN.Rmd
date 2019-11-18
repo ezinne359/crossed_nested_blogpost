@@ -279,7 +279,9 @@ knitr::include_graphics("police_re.png")
 
 
 ## Crossed Model 
+
 When we fit a crossed model, we notice that `county` captures a lot of the variability within our model but `driver_race` not so much. 
+
 ```{r model, message=FALSE,warning=FALSE}
 
 crossed_mod = glmer(stop_rate~ (1|driver_race) + (1|state) + (1|county),  
@@ -303,6 +305,7 @@ BIC(crossed_mod)
 
 ## Nested Model
 However, when we fit a nested model, `driver_race` starts to account for a lot more variability in our data. We still cannot say anything conclusive about whether there is racial bias in police stops from fitting just these two models. More work would need to be done to show that. In fact more work has been done extensively to answer this question (**SPOILER ALERT: Yes there is a racial bias in police stops across the US.)
+
 ```{r nested model, warning= FALSE, message= FALSE}
 
 nested_mod = glmer(stop_rate~  (1|state/driver_race) + (1|county/driver_race) ,  
