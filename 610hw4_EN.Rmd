@@ -1,5 +1,5 @@
 ---
-title: 'HW 4: Are You Crossed (or Nested)?'
+title: 'Are You Crossed (or Nested)?'
 knit: (function(input_file, encoding) {
   out_dir <- 'docs';
   rmarkdown::render(input_file,
@@ -11,9 +11,38 @@ output:
   html_document:
     toc: true
     toc_float: true
+    df_print: paged
 ---
 
-# Introduction
+# Introduction 
+This is post is for all who were ever confused on whether to fit a model with crossed versus nested random effects. I assume a basic understanding of linear models and hiearchical models, but in case you don't have that knowledge, here is a quick refresher and resources to learn more. Hierarchical Modeling is a type of model that allows us to use all of our data in savy and interesting ways. With this type of model, we are completing two estimate tasks at once. The first is to try to learn about each group separately, and the second is to learn about the population across all groups. The main benefits of modeling the data in this way include: 
+
+- improved estimates for $\textbf{repeat samples}$, that is when your data has more than one observation for the same individual, location, or time etc. 
+
+- improved estimate for $\textbf{unbalanced samples}$, that is when some observations are sampled more than others. For example, in a medical study, among different racial groups, you might have more observations for people who identity as `White` than `Black` due to selection bias and/or mistrust of doctors that may exists in some communities. 
+
+- provides estimates of $\textbf{variation}$ among individuals or groups within the data. 
+
+A typical model set up looks like this: 
+
+$$
+\begin{aligned}
+y_{ij} &= \beta_{0,j} + \beta_{1,j}x_{ij} + \epsilon_{ij} \\
+\beta_{0,j} &= \beta_0 + b_{0,j} \\
+\beta_{1,j} &= \beta_1 + b_{1,j} \\
+\bigg(\begin{array}{c}  b_{0,j} \\ b_{1,j}  \end{array}\bigg) &\stackrel{iid}{\sim} N\bigg(\bigg(\begin{array}{c}  0 \\ 0 \end{array}\bigg) ,\bigg(\begin{array}{cc}  \tau_{11} & \tau_{12} \\ \tau_{12} & \tau_{22} \end{array}\bigg) \bigg) \perp \epsilon_{ij} \stackrel{iid}\sim N(0, \sigma^2)
+\end{aligned}
+$$
+
+where $i = 1, \cdots ,m$ families and $j = 1, \cdots, n_i$ children within family $i$. This also happens to be a  classic example of a model that has nested data. Which brings us to a the main topic of this  post: Nested versus Crossed Random Effects.
+
+When trying to understand hierarchical models, it is easy to get confused by the different hiearchies that can exist in your data. Specifically, it can be difficult to understand when to use crossed versus nested random effects. It is important to note, whether your random effects are going to be cross versus nested are entirely a property of the data, and not the model. Let's start with some simple definitions: 
+
+- $\textbf{Nested random effects}$: when each member of one group can be also be found within another group. That is across different groups, there are no unique labels. 
+
+- $\textbf{Crossed random effects}$: when random effects are not nested, they are called crossed. That is across different groups, each label is unique to that individual. 
+
+Let's begin with a simple example and then work our way up to a more complex one for illustrating nested and crossed random effects.  
 
 ```{r libraries, include = FALSE}
 library(magrittr)
@@ -45,20 +74,13 @@ library(varhandle)
 #install.packages("truncnorm")
 library(truncnorm)
 require(lattice) 
+library(gganimate)
+#install.packages("gifski")
 ```
 
-# Nested vs Crossed
+# Nested vs. Crossed {.tabset .tabset-pill}
 
-## Nested Example {.tabset .tabset-fade .tabset-pill}
-
-
-
-
-```{r nested, echo=FALSE, fig.cap="Nested Groups",fig.align='center',out.width = '50%'}
-knitr::include_graphics("nested_re.png")
-```
-
-
+In this example, we will look at simulated data on winter clothing (i.e. boots, jackets, and gloves) and an outcome variable `Price`. 
 
 ```{r simulate data, include=FALSE}
 set.seed(888)
@@ -75,27 +97,50 @@ winter_clothes <- cbind(price,product,size)
 winter_clothes <- as.data.frame(winter_clothes)
 winter_clothes$price <- unfactor(winter_clothes$price)
 
-winter_clothes <- winter_clothes %>% mutate(price = case_when(product == "boots" ~ price , product == "jackets" ~ price + 10, product == "gloves" ~ price) )
+winter_clothes <- winter_clothes %>% mutate(price = case_when(product == "boots" ~ price  , product == "jacket" ~ price + 10, product == "gloves" ~ price +4) )
 
 #View(winter_clothers)
 
-
 ```
 
-```{r}
-library(gganimate)
+
+
+
+## Nested Data {.tabset .tabset-fade .tabset-pill}
+```{r nested data, include=FALSE}
+
 #> Loading required package: ggplot2
 
 # We'll start with a static plot
-p <- ggplot(winter_clothes, aes(x = size, y = price)) + 
-  geom_point()
-
-p
+p <- ggplot(winter_clothes, aes(x = product, y = price)) + 
+  geom_point() 
 ```
 
+```{r nested, echo=FALSE, cache=TRUE, fig.cap="Nested Groups",fig.align = "center", out.height= '30%',out.width = "50%", fig.show='hold'}
 
+knitr::include_graphics("nested_re.png")
+  
+```
+ 
+ 
+```{r}
+winter_clothes
+```
 
-### Wrong Model 
+```{r nested animation, cache = TRUE, include = FALSE, fig.align="center", out.height= '30%',out.width = "50%", fig.show='hold'}
+anim <- p + 
+  transition_states(size,
+                    transition_length = 2,
+                    state_length = 1)
+
+anim + ggtitle('Now showing {closest_state}')
+```
+
+We can model the data in multiple ways, but for this blog we will focus on the two ways being crossed or nested random effects models. 
+
+### Crossed Model 
+
+This model is saying that there is a lot of heterogeneity by product and by size. We believe that the size levels vary across products in the same way, that is there small boots vary in the same way as small gloves. But our common knowledge should make us question this assumption and instead we want to be able to distinsh small boots from small gloves, etc. In results from the model, size makes up a large percentage of the variation within the data, and there is considerable variability across the differnt products. But that is not the full story! 
 
 ```{r nested wrong, warning = FALSE, message = FALSE}
 nested_wrong <- lmer(price ~ (1|product) + (1|size), data = winter_clothes)
@@ -103,16 +148,13 @@ summary(nested_wrong)
 
 ```
 
-```{r}
+```{r, echo = FALSE, fig.align="center"}
 grid.arrange(qqmath(ranef(nested_wrong, condVar=TRUE))$product, qqmath(ranef(nested_wrong, condVar=TRUE))$size, ncol = 2)
 ```
 
+### Nested Model
 
-
-
-
-### Right Model
-
+Instead, we want the model to treat small boots as being different from small gloves so we must include size as a nested random effect within product. This  considerably reduces the variation that we see by product and we see that much of the variation is ultimately because of size. 
 
 ```{r nested right, warning = FALSE, message= FALSE}
 nested_right <- lmer(price ~ (1|product/size), data = winter_clothes)
@@ -120,17 +162,16 @@ summary(nested_right)
 
 ```
 
-```{r}
+```{r, echo=FALSE, fig.align="center"}
 grid.arrange(qqmath(ranef(nested_right, condVar=TRUE))$product, qqmath(ranef(nested_right, condVar=TRUE))$size, ncol = 2)
 ```
 
 
-## Crossed Example {.tabset .tabset-fade .tabset-pill}
+## Crossed Data {.tabset .tabset-fade .tabset-pill}
 
 ```{r crossed, echo=FALSE, fig.cap="Crossed Groups",fig.align='center',out.width = '50%'}
 knitr::include_graphics("crossed_re.png")
 ```
-
 
 ```{r crossed sim data, include = FALSE }
 price <- rep(c(s_price,m_price,l_price),3)
@@ -148,16 +189,34 @@ winter_clothes_new$price <- unfactor(winter_clothes_new$price)
 
 ```
 
+```{r}
+winter_clothes_new
+```
 
-### Model One
+```{r crossed data, include=FALSE}
+
+#> Loading required package: ggplot2
+
+# We'll start with a static plot
+p <- ggplot(winter_clothes_new, aes(x = product, y = price, color = size)) + 
+  geom_point() 
+
+```
+
+### Crossed Model 
+In the data, the labels for size are each unique for each product type so we should get the same estimates from a croossed model as we doo from a nested model. 
 
 ```{r crossed model 1, message=FALSE }
 crossed1 <- lmer(price ~ (1|product) + (1|size), data = winter_clothes_new)
 summary(crossed1)
 ```
 
+```{r,echo=FALSE, fig.align="center"}
+grid.arrange(qqmath(ranef(crossed1, condVar=TRUE))$product, qqmath(ranef(crossed1, condVar=TRUE))$size, ncol = 2)
+```
 
-### Model Two
+### Nested Model
+And that's exactly what we get! The size within each product accounts for a lot of the variation that we see within the data. 
 
 ```{r crossed model 2, message=FALSE }
 crossed2 <- lmer(price ~ (1|product/size), data = winter_clothes_new)
@@ -165,17 +224,132 @@ summary(crossed2)
 
 ```
 
+```{r, echo=FALSE, fig.align="center"}
+grid.arrange(qqmath(ranef(crossed2, condVar=TRUE))$product, qqmath(ranef(crossed2, condVar=TRUE))$size, ncol = 2)
+```
 
 
-# USA Police Stops 
+# USA Police Stops {.tabset .tabset-fade .tabset-pill}
+Now, let's look at some real data. We will be looking at policing data in the US from 17 different states: 
+
+- Arizona
+
+- California
+
+- Colorado 
+
+- Conneticut
+
+- Florida
+
+- Illinois
+
+- Massachusetts
+
+- Montana 
+
+- North Carolina 
+
+- New Jersey 
+
+- Ohio 
+
+- South Carolina
+
+- Texas 
+
+- Vermont 
+
+- Washington 
+
+- Wisconsin
 
 ```{r police data, include = FALSE}
 combined_data <- readr::read_csv("https://raw.githubusercontent.com/5harad/openpolicing/master/results/data_for_figures/combined_data.csv")
+#View(combined_data)
+combined_data$state <- factor(combined_data$state)
+data_state_key <- c(AZ = "arizona", CA = "california", CO = "colorado", CT = "conneticut", FL = "florida", IL = "illinois", MA = "massachusetts", MT = "montana", NC = "north carolina", NJ = "new jersey", OH = "ohio", RI = "rhode island", SC = "south carolina", TX = "texas", VT = "vermont", WA = "washington", WI = "wisconsin")
+combined_data$state <- recode(combined_data$state, !!!data_state_key)
+combined_data <- combined_data %>% mutate(total = stops_per_year/stop_rate) %>%  drop_na(stop_rate) %>% filter(!(stop_rate > 1)) %>% mutate(county = location)
 ```
 
 
-```{r}
+```{r map, fig.width=13, echo = FALSE, message=FALSE, warning=FALSE}
+
+#us map
+us_states <- tbl_df(map_data("state"))
+
+## state stops per year
+state_stops<- combined_data %>% 
+  group_by(state) %>% 
+  summarise(total_stops = sum(stops_per_year)) %>% 
+  select(state, total_stops) %>% 
+  mutate(region = state)
+
+# Join the values to the map
+
+us_stops <- right_join(us_states, state_stops)
+
+# Plot it
+
+map1 <- ggplot() +
+  geom_polygon(data=us_stops, color="black",
+               aes(x=long, y=lat, group=state, fill=total_stops)) +
+  viridis::scale_fill_viridis(name="Total Stops", direction=-1, labels = scales::unit_format(unit = "K", scale = 1e-3)) +
+  coord_map("polyconic") +
+  ggthemes::theme_map() +
+  theme(legend.position="left")
+
+map1
+
+
+```
+
+## Crossed Model 
+
+```{r model, message=FALSE,warning=FALSE}
+
+crossed_mod = glmer(stop_rate~ (1|driver_race) + (1|state) + (1|county),  
+               weights = total,
+               data = combined_data,
+               family = "binomial")
+
+summary(crossed_mod)
+
+```
+
+```{r,  echo=FALSE, fig.align="center"}
+grid.arrange(dotplot(ranef(crossed_mod, condVar=TRUE))$state, dotplot(ranef(crossed_mod, condVar=TRUE))$driver_race, ncol = 2)
+```
+
+
+### Crossed Model BIC: 
+```{r bic crossed, echo = FALSE}
+BIC(crossed_mod)
+```
+
+## Nested Model
+
+```{r nested model, warning= FALSE, message= FALSE}
+
+nested_mod = glmer(stop_rate~  (1|state/driver_race) + (1|county/driver_race) ,  
+               weights = total,
+               data = combined_data,
+               family = "binomial")
+
+summary(nested_mod)
 
 ```
 
 
+
+
+```{r re nested,  echo=FALSE, fig.align="center"}
+grid.arrange(dotplot(ranef(nested_mod, condVar=TRUE))$state, dotplot(ranef(nested_mod, condVar=TRUE))$`driver_race:state`, dotplot(ranef(nested_mod, condVar=TRUE))$county, dotplot(ranef(nested_mod, condVar=TRUE))$`driver_race:county`, ncol = 2)
+```
+
+### Nested Model BIC: 
+```{r BIC nested model,echo = FALSE}
+BIC(nested_mod)
+
+```
