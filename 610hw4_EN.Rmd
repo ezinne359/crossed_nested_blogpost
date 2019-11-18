@@ -333,5 +333,7 @@ BIC(nested_mod)
 
 ### References: 
 [1] https://github.com/5harad/openpolicing
+
 [2] https://5harad.com/papers/100M-stops.pdf
+
 [3] http://errickson.net/stats-notes/vizrandomeffects.html
