@@ -15,7 +15,7 @@ output:
 ---
 
 # Introduction 
-This is post is for all who were ever confused on whether to fit a model with crossed versus nested random effects. I assume a basic understanding of linear models and hiearchical models, but in case you don't have that knowledge, here is a quick refresher and resources to learn more. Hierarchical Modeling is a type of model that allows us to use all of our data in savy and interesting ways. With this type of model, we are completing two estimate tasks at once. The first is to try to learn about each group separately, and the second is to learn about the population across all groups. The main benefits of modeling the data in this way include: 
+This post is for all who were ever confused on whether to fit a model with crossed versus nested random effects. I assume a basic understanding of linear models and hiearchical models, but in case the reader doesn't have that knowledge, here is a quick refresher. Hierarchical Modeling is a type of model that allows us to use all of our data in savy and interesting ways. With this type of model, we are completing two estimation tasks at once. The first is to try to learn about each group separately, and the second is to learn about the population across all groups. The main benefits of modeling the data in this way include: 
 
 - improved estimates for $\textbf{repeat samples}$, that is when your data has more than one observation for the same individual, location, or time etc. 
 
@@ -34,15 +34,17 @@ y_{ij} &= \beta_{0,j} + \beta_{1,j}x_{ij} + \epsilon_{ij} \\
 \end{aligned}
 $$
 
-where $i = 1, \cdots ,m$ families and $j = 1, \cdots, n_i$ children within family $i$. This also happens to be a  classic example of a model that has nested data. Which brings us to a the main topic of this  post: Nested versus Crossed Random Effects.
+where maybe $i = 1, \cdots ,m$ families and $j = 1, \cdots, n_i$ children within family $i$. This also happens to be aclassic example of a model that has nested data because it uses the familiarity we have with childen being nested in specific families. Which brings us to the main topic of this  post: Nested versus Crossed Random Effects.
 
-When trying to understand hierarchical models, it is easy to get confused by the different hiearchies that can exist in your data. Specifically, it can be difficult to understand when to use crossed versus nested random effects. It is important to note, whether your random effects are going to be cross versus nested are entirely a property of the data, and not the model. Let's start with some simple definitions: 
+When trying to understand hierarchical models, it is easy to get confused by the different hiearchies that can exist within your data. Specifically, it can be difficult to understand when to use crossed versus nested random effects (It can also be difficult trying to understand when to use fixed versus random effects but that is not our focus in this blog. See references for more info). It is important to note, whether your random effects are going to be cross versus nested are entirely a property of the data, and not the model. 
+
+Let's start with some intuitive definitions: 
 
 - $\textbf{Nested random effects}$: when each member of one group can be also be found within another group. That is across different groups, there are no unique labels. 
 
 - $\textbf{Crossed random effects}$: when random effects are not nested, they are called crossed. That is across different groups, each label is unique to that individual. 
 
-Let's begin with a simple example and then work our way up to a more complex one for illustrating nested and crossed random effects.  
+Now we can look at an example and then work our way up to a more complex one for illustrating nested and crossed random effects. A lot of other resources on the internet give the common example of children nested in classrooms or families, so for this blogpost, I thought a novel example might be helpful (You can never have too many examples!). 
 
 ```{r libraries, include = FALSE}
 library(magrittr)
@@ -80,7 +82,7 @@ library(gganimate)
 
 # Nested vs. Crossed {.tabset .tabset-pill}
 
-In this example, we will look at simulated data on winter clothing (i.e. boots, jackets, and gloves) and an outcome variable `Price`. 
+In this example, we will look at simulated data on winter clothing (i.e. boots, jackets, and gloves) with `Size` and `Product` as predictors and an outcome variable `Price`. 
 
 ```{r simulate data, include=FALSE}
 set.seed(888)
@@ -140,7 +142,7 @@ We can model the data in multiple ways, but for this blog we will focus on the t
 
 ### Crossed Model 
 
-This model is saying that there is a lot of heterogeneity by product and by size. We believe that the size levels vary across products in the same way, that is there small boots vary in the same way as small gloves. But our common knowledge should make us question this assumption and instead we want to be able to distinsh small boots from small gloves, etc. In results from the model, size makes up a large percentage of the variation within the data, and there is considerable variability across the differnt products. But that is not the full story! 
+This model is saying that there is a lot of heterogeneity by product and by size. We believe that the size levels vary across products in the same way, that is there small boots vary in the same way as small gloves. But our common knowledge should make us question this assumption and instead we want to be able to distinsh small boots from small gloves, etc. In the results from the model, size makes up a large percentage of the variation within the data, and there is considerable variability across the differnt products. But that is not the full story! Click the Nested Model Tab.
 
 ```{r nested wrong, warning = FALSE, message = FALSE}
 nested_wrong <- lmer(price ~ (1|product) + (1|size), data = winter_clothes)
@@ -204,7 +206,7 @@ p <- ggplot(winter_clothes_new, aes(x = product, y = price, color = size)) +
 ```
 
 ### Crossed Model 
-In the data, the labels for size are each unique for each product type so we should get the same estimates from a croossed model as we doo from a nested model. 
+In the data, the labels for size are each unique for each product type so we should get the same estimates from a croossed model as we do from a nested model. Click the next tab to find out.
 
 ```{r crossed model 1, message=FALSE }
 crossed1 <- lmer(price ~ (1|product) + (1|size), data = winter_clothes_new)
@@ -271,7 +273,7 @@ map1
 
 
 ```
-For our modelling, we will focus on modeling stop rate with driver_race, state, and county as predictors to try and determine if there is any bias in police stops across the US. Due to the coding of the data, we are faced with the same question asked in the title of this blog, should we use crossed or nested random effects?
+For our model, we will focus on modeling stop rate with driver_race, state, and county as predictors to try and determine if there is any bias in police stops across the US. Due to the coding of the data, we are faced with the same question asked in the title of this blog, should we use crossed or nested random effects?
 
 ```{r police image, echo=FALSE,fig.align='center',out.width = '50%'}
 knitr::include_graphics("police_re.png")
@@ -304,7 +306,7 @@ BIC(crossed_mod)
 ```
 
 ## Nested Model
-However, when we fit a nested model, `driver_race` starts to account for a lot more variability in our data. We still cannot say anything conclusive about whether there is racial bias in police stops from fitting just these two models. More work would need to be done to show that. In fact more work has been done extensively to answer this question (**SPOILER ALERT: Yes there is a racial bias in police stops across the US.)
+However, when we fit a nested model, `driver_race` starts to account for a lot more variability in our data. We cannot say anything conclusive about whether there is racial bias in police stops from fitting just these two models. More work would need to be done in order to show that. In fact more work has been done extensively to answer this question and they are included in the references section (**SPOILER ALERT: Yes there is a racial bias in police stops across the US). Additionally, it turns out that our nested model has a better BIC than the crossed model. 
 
 ```{r nested model, warning= FALSE, message= FALSE}
 
@@ -325,13 +327,14 @@ grid.arrange(dotplot(ranef(nested_mod, condVar=TRUE))$state, dotplot(ranef(neste
 ```
 
 ### Nested Model BIC: 
+
 ```{r BIC nested model,echo = FALSE}
 BIC(nested_mod)
 
 ```
 
 
-### References: 
+#### References: 
 [1] https://github.com/5harad/openpolicing
 
 [2] https://5harad.com/papers/100M-stops.pdf
