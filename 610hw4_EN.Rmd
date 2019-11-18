@@ -97,7 +97,7 @@ winter_clothes <- cbind(price,product,size)
 winter_clothes <- as.data.frame(winter_clothes)
 winter_clothes$price <- unfactor(winter_clothes$price)
 
-winter_clothes <- winter_clothes %>% mutate(price = case_when(product == "boots" ~ price  , product == "jacket" ~ price + 10, product == "gloves" ~ price +4) )
+winter_clothes <- winter_clothes %>% mutate(price = case_when(product == "boots" ~ price  , product == "jackets" ~ price + 10, product == "gloves" ~ price +4) )
 
 #View(winter_clothers)
 
@@ -230,40 +230,6 @@ grid.arrange(qqmath(ranef(crossed2, condVar=TRUE))$product, qqmath(ranef(crossed
 
 
 # USA Police Stops {.tabset .tabset-fade .tabset-pill}
-Now, let's look at some real data. We will be looking at policing data in the US from 17 different states: 
-
-- Arizona
-
-- California
-
-- Colorado 
-
-- Conneticut
-
-- Florida
-
-- Illinois
-
-- Massachusetts
-
-- Montana 
-
-- North Carolina 
-
-- New Jersey 
-
-- Ohio 
-
-- South Carolina
-
-- Texas 
-
-- Vermont 
-
-- Washington 
-
-- Wisconsin
-
 ```{r police data, include = FALSE}
 combined_data <- readr::read_csv("https://raw.githubusercontent.com/5harad/openpolicing/master/results/data_for_figures/combined_data.csv")
 #View(combined_data)
@@ -272,6 +238,7 @@ data_state_key <- c(AZ = "arizona", CA = "california", CO = "colorado", CT = "co
 combined_data$state <- recode(combined_data$state, !!!data_state_key)
 combined_data <- combined_data %>% mutate(total = stops_per_year/stop_rate) %>%  drop_na(stop_rate) %>% filter(!(stop_rate > 1)) %>% mutate(county = location)
 ```
+Now, let's look at some real data. We will be looking at policing data in the US from 17 different states including Arizona, California, Colorado, Conneticut, Florida, Illinois, Massachusetts, Montana, North Carolina, New Jersey, Ohio, South Carolina, Texas, Vermont, Washington, Wisconsin. After some cleaning and data manipulation, there are `r nrow(combined_data)` observations. The data includes variables such as: county, state, driver_race, stop rate, stops_per_year, search rate, and arrest rate. 
 
 
 ```{r map, fig.width=13, echo = FALSE, message=FALSE, warning=FALSE}
@@ -295,7 +262,7 @@ us_stops <- right_join(us_states, state_stops)
 map1 <- ggplot() +
   geom_polygon(data=us_stops, color="black",
                aes(x=long, y=lat, group=state, fill=total_stops)) +
-  viridis::scale_fill_viridis(name="Total Stops", direction=-1, labels = scales::unit_format(unit = "K", scale = 1e-3)) +
+  scale_fill_gradient(name="Total Stops", labels = scales::unit_format(unit = "K", scale = 1e-3), low = "white", high = "#2E74C0") +
   coord_map("polyconic") +
   ggthemes::theme_map() +
   theme(legend.position="left")
@@ -304,9 +271,15 @@ map1
 
 
 ```
+For our modelling, we will focus on modeling stop rate with driver_race, state, and county as predictors to try and determine if there is any bias in police stops across the US. Due to the coding of the data, we are faced with the same question asked in the title of this blog, should we use crossed or nested random effects?
+
+```{r police image, echo=FALSE,fig.align='center',out.width = '50%'}
+knitr::include_graphics("police_re.png")
+```
+
 
 ## Crossed Model 
-
+When we fit a crossed model, we notice that `county` captures a lot of the variability within our model but `driver_race` not so much. 
 ```{r model, message=FALSE,warning=FALSE}
 
 crossed_mod = glmer(stop_rate~ (1|driver_race) + (1|state) + (1|county),  
@@ -329,7 +302,7 @@ BIC(crossed_mod)
 ```
 
 ## Nested Model
-
+However, when we fit a nested model, `driver_race` starts to account for a lot more variability in our data. We still cannot say anything conclusive about whether there is racial bias in police stops from fitting just these two models. More work would need to be done to show that. In fact more work has been done extensively to answer this question (**SPOILER ALERT: Yes there is a racial bias in police stops across the US.)
 ```{r nested model, warning= FALSE, message= FALSE}
 
 nested_mod = glmer(stop_rate~  (1|state/driver_race) + (1|county/driver_race) ,  
@@ -353,3 +326,9 @@ grid.arrange(dotplot(ranef(nested_mod, condVar=TRUE))$state, dotplot(ranef(neste
 BIC(nested_mod)
 
 ```
+
+
+### References: 
+[1] https://github.com/5harad/openpolicing
+[2] https://5harad.com/papers/100M-stops.pdf
+[3] http://errickson.net/stats-notes/vizrandomeffects.html
