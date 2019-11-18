@@ -1,0 +1,176 @@
+---
+title: 'HW 4: Are You Crossed (or Nested)?'
+author: "Ezinne Nwankwo"
+date: "11/15/2019"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+# Introduction
+
+```{r libraries, include = FALSE}
+library(magrittr)
+library(dplyr)
+library(tidyr)
+#library("dplyr")
+library("ggplot2")
+library(stringr)
+library("tidyverse")
+#library(plyr)
+library("lubridate")
+library(psych)
+#install.packages("readxl")
+library(readxl)
+library(brms)
+#install.packages("ggthemes")
+library("ggthemes")
+#install.packages("plotly")
+library(plotly)
+library(maps)
+#install.packages("mapproj")
+library("mapproj")
+library("lme4")
+library("kableExtra")
+library(grid)
+library(gridExtra)
+#install.packages("varhandle")
+library(varhandle)
+#install.packages("truncnorm")
+library(truncnorm)
+require(lattice) 
+```
+
+# Nested vs Crossed
+
+## Nested Example {.tabset .tabset-fade .tabset-pill}
+
+
+
+
+```{r nested, echo=FALSE, fig.cap="Nested Groups",fig.align='center',out.width = '50%'}
+knitr::include_graphics("nested_re.png")
+```
+
+
+
+```{r simulate data, include=FALSE}
+set.seed(888)
+
+#price <- c(rep("9.99",3), rep("15.99",3), rep("14.99",3), rep("17.99",3),rep("29.99",3),rep("25.99",3), rep("5.99",3), rep("10.99",3), rep("7.99",3))
+s_price <- round(rtruncnorm(3, a=10, b=20, mean = 15 , sd = 10),2)
+m_price <- round(rtruncnorm(3, a=20, b=30, mean = 25 , sd = 4),2)
+l_price <- round(rtruncnorm(3, a=2, b=10, mean = 5 , sd = 2),2) 
+price <- rep(c(s_price,m_price,l_price),3)
+product <- c(rep("boots", 9), rep("jackets",9), rep("gloves", 9))
+size <- c(rep(c(rep("s",3), rep("m",3), rep("l",3)),9))
+
+winter_clothes <- cbind(price,product,size)
+winter_clothes <- as.data.frame(winter_clothes)
+winter_clothes$price <- unfactor(winter_clothes$price)
+
+winter_clothes <- winter_clothes %>% mutate(price = case_when(product == "boots" ~ price , product == "jackets" ~ price + 10, product == "gloves" ~ price) )
+
+#View(winter_clothers)
+
+
+```
+
+```{r}
+library(gganimate)
+#> Loading required package: ggplot2
+
+# We'll start with a static plot
+p <- ggplot(winter_clothes, aes(x = size, y = price)) + 
+  geom_point()
+
+p
+```
+
+
+
+### Wrong Model 
+
+```{r nested wrong, warning = FALSE, message = FALSE}
+nested_wrong <- lmer(price ~ (1|product) + (1|size), data = winter_clothes)
+summary(nested_wrong)
+
+```
+
+```{r}
+grid.arrange(qqmath(ranef(nested_wrong, condVar=TRUE))$product, qqmath(ranef(nested_wrong, condVar=TRUE))$size, ncol = 2)
+```
+
+
+
+
+
+### Right Model
+
+
+```{r nested right, warning = FALSE, message= FALSE}
+nested_right <- lmer(price ~ (1|product/size), data = winter_clothes)
+summary(nested_right)
+
+```
+
+```{r}
+grid.arrange(qqmath(ranef(nested_right, condVar=TRUE))$product, qqmath(ranef(nested_right, condVar=TRUE))$size, ncol = 2)
+```
+
+
+## Crossed Example {.tabset .tabset-fade .tabset-pill}
+
+```{r crossed, echo=FALSE, fig.cap="Crossed Groups",fig.align='center',out.width = '50%'}
+knitr::include_graphics("crossed_re.png")
+```
+
+
+```{r crossed sim data, include = FALSE }
+price <- rep(c(s_price,m_price,l_price),3)
+product <- c(rep("boots", 9), rep("jackets",9), rep("gloves", 9))
+size.b <- c(rep(5,3), rep(6,3), rep(7,3))
+size.j <- c(rep("s",3), rep("m",3), rep("l",3))
+size.g <- rep("u", 9)
+size <- rep(c(size.b,size.j,size.g),2)
+
+winter_clothes_new <- cbind(price,product,size)
+winter_clothes_new <- as.data.frame(winter_clothes_new)
+winter_clothes_new$price <- unfactor(winter_clothes_new$price)
+
+#View(winter_clothes_new)
+
+```
+
+
+### Model One
+
+```{r crossed model 1, message=FALSE }
+crossed1 <- lmer(price ~ (1|product) + (1|size), data = winter_clothes_new)
+summary(crossed1)
+```
+
+
+### Model Two
+
+```{r crossed model 2, message=FALSE }
+crossed2 <- lmer(price ~ (1|product/size), data = winter_clothes_new)
+summary(crossed2)
+
+```
+
+
+
+# USA Police Stops 
+
+```{r police data, include = FALSE}
+combined_data <- readr::read_csv("https://raw.githubusercontent.com/5harad/openpolicing/master/results/data_for_figures/combined_data.csv")
+```
+
+
+```{r}
+
+```
+
+
