@@ -1,5 +1,10 @@
 ---
 title: 'HW 4: Are You Crossed (or Nested)?'
+knit: (function(input_file, encoding) {
+  out_dir <- 'docs';
+  rmarkdown::render(input_file,
+  encoding=encoding,
+  output_file=file.path(dirname(input_file), out_dir, 'index.html'))})
 author: "Ezinne Nwankwo"
 date: "11/15/2019"
 output:
